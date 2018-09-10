@@ -34,6 +34,7 @@ def getdata():
             standings['SPF'] = standings.SP.apply(p2f)
             standings['GPF'] = standings.GP.apply(p2f)
             standings['P'] = pd.to_numeric(standings['P'])
+            standings.to_csv("C:/Users/khyu7/Documents/Coding/LOL/Data/" + i + ' Standings.csv')
             
             name = title.find('h1', {'id': 'firstHeading'}).text
             name = name.replace(" ", "%20")
