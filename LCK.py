@@ -33,6 +33,7 @@ def getdata():
             standings.columns = ['Team', 'Series', 'SP', 'Games', 'GP', 'P']
             standings['SPF'] = standings.SP.apply(p2f)
             standings['GPF'] = standings.GP.apply(p2f)
+            standings['P'] = pd.to_numeric(standings['P'])
             
             name = title.find('h1', {'id': 'firstHeading'}).text
             name = name.replace(" ", "%20")
@@ -56,13 +57,17 @@ def getdata():
             results['spf_b'] = results['Blue'].map(standings.set_index('Team')['SPF'])
             results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
             results['spf_r'] = results['Red'].map(standings.set_index('Team')['SPF'])
+            results['spf_r'] = -results['spf_r']
             results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
+            results['gpf_r'] = -results['gpf_r']
             results['p_b'] = results['Blue'].map(standings.set_index('Team')['P'])
             results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
+            results['p_r'] = -results['p_r']
             results['Winner'] = np.where(results['Win'] == 'blue', 1, 0)
-            results = results.iloc[:, :]
+            #results = results.iloc[:, 3:]
             #print(results)
-            results.to_csv(i + '.csv')
+            path = "C:/Users/khyu7/Documents/Coding/LOL/Data/"
+            results.to_csv(path + i + '.csv')
 
 #get unique tournament list & url
 base = 'https://lol.gamepedia.com'
@@ -96,13 +101,17 @@ for i in df[0]['Tournament']:
         results['spf_b'] = results['Blue'].map(standings.set_index('Team')['SPF'])
         results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
         results['spf_r'] = results['Red'].map(standings.set_index('Team')['SPF'])
+        results['spf_r'] = -results['spf_r']
         results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
+        results['gpf_r'] = -results['gpf_r']
         results['p_b'] = results['Blue'].map(standings.set_index('Team')['P'])
         results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
+        results['p_r'] = -results['p_r']
         results['Winner'] = np.where(results['Win'] == 'blue', 1, 0)
-        results = results.iloc[:, :]
+        #results = results.iloc[:, :]
         #print(results)
-        results.to_csv(i + ' Playoffs' + '.csv')
+        path = "C:/Users/khyu7/Documents/Coding/LOL/Data/"
+        results.to_csv(path + i + ' Playoffs' + '.csv')
 
 #model = LinearRegression()
 #model.fit(results.iloc[:,0:4], results.iloc[:,5])

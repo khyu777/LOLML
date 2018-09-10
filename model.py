@@ -5,13 +5,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_squared_error, r2_score
 
-regular = pd.read_csv('Data/LCK_Summer_2018.csv', index_col=0)
-playoff = pd.read_csv('Data/LCK Summer 2018 Playoffs.csv', index_col=0)
+filename = 'LCK Summer 2017'
+
+regular = pd.read_csv('Data/LCK Summer 2017.csv', index_col=0)
+playoff = pd.read_csv('Data/LCK Summer 2017 Playoffs.csv', index_col=0)
 
 train_X = regular.iloc[:, 3:-1]
 train_Y = regular.iloc[:, -1]
 test_X = playoff.iloc[:, 3:-1]
 test_Y = playoff.iloc[:, -1]
+print(train_X)
 
 lm = linear_model.LinearRegression()
 lm.fit(train_X, train_Y)
@@ -28,3 +31,4 @@ print('Variance score: %.2f' % r2_score(test_Y, y_pred))
 test_Y = pd.DataFrame(test_Y)
 playoff['prediction'] = y_pred
 print(playoff.iloc[:, 3:])
+playoff.to_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + filename + '_pred.csv')
