@@ -34,7 +34,6 @@ def getdata():
             standings['SPF'] = standings.SP.apply(p2f)
             standings['GPF'] = standings.GP.apply(p2f)
             standings['P'] = pd.to_numeric(standings['P'])
-            standings.to_csv("C:/Users/khyu7/Documents/Coding/LOL/Data/" + i + ' Standings.csv')
             
             name = title.find('h1', {'id': 'firstHeading'}).text
             name = name.replace(" ", "%20")
@@ -54,6 +53,18 @@ def getdata():
             print(teams)
             standings['Team'] = standings['Team'].map(teams)
             print(standings)
+            #standings.to_csv("C:/Users/khyu7/Documents/Coding/LOL/Data/" + i + ' Standings.csv')
+            l = []
+            for row in history.find_all('tr'):
+                column = row.find_all('td', {'class':'_toggle stats'})
+                values = []
+                for value in column:
+                    values.append(value.text.strip('\n'))
+                l.append(values)
+            stats = pd.DataFrame(l).iloc[:,-6:]
+            stats.columns = ['GD', 'KDiff', 'TDiff', 'DDiff', 'BDiff', 'RHDiff']
+            stats = stats.dropna()
+            stats = stats.reset_index(drop=True)
 
             results['spf_b'] = results['Blue'].map(standings.set_index('Team')['SPF'])
             results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
@@ -65,10 +76,10 @@ def getdata():
             results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
             results['p_r'] = -results['p_r']
             results['Winner'] = np.where(results['Win'] == 'blue', 1, 0)
-            #results = results.iloc[:, 3:]
-            #print(results)
+            results = pd.concat([results,stats], axis=1)
+            print(results)
             path = "C:/Users/khyu7/Documents/Coding/LOL/Data/"
-            results.to_csv(path + i + '.csv')
+            #results.to_csv(path + i + '.csv')
 
 #get unique tournament list & url
 base = 'https://lol.gamepedia.com'
@@ -78,6 +89,7 @@ teams = {}
 for i in df[0]['Tournament']:
     print(i)
     getdata()
+    break
     if 'LCK' in i:     
         fin = soup.find('a', text=i, href=True)
         url = base + str(fin['href'])
@@ -113,6 +125,3 @@ for i in df[0]['Tournament']:
         #print(results)
         path = "C:/Users/khyu7/Documents/Coding/LOL/Data/"
         results.to_csv(path + i + ' Playoffs' + '.csv')
-
-#model = LinearRegression()
-#model.fit(results.iloc[:,0:4], results.iloc[:,5])

@@ -6,13 +6,6 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
 import matplotlib.pyplot as plt
 import numpy as np
 
-files = []
-for file in os.listdir('C:/Users/khyu7/Documents/Coding/Lol/Data'):
-	file_name, file_ext = os.path.splitext(file)
-	if file_ext == '.csv' and 'Playoffs' not in file_name and 'Standings' not in file_name:
-		files.append(file_name)
-print(files)
-
 def match(data, team1, team2, model, random_scale=5):
 	match = pd.DataFrame(columns = ['sp1', 'gp1', 'p1', 'sp2', 'gp2', 'p2'], index=[0])
 		
@@ -47,74 +40,77 @@ def simulate_matches(team, model, n_matches=100):
 		match_results = []
 		for j in range(n_matches):
 			match_results.append(match(standings, winner, team[i], model, random_scale=5))
+			match_results.append(match(standings, winner, team[i], model, random_scale=5))
+			match_results.append(match(standings, team[i], winner, model, random_scale=5))
 
 		team1_proba = match_results.count(winner)/len(match_results)*100
 		team2_proba = match_results.count(team[i])/len(match_results)*100
 
 		print(winner, ': ', team1_proba)
 		print(team[i], ': ', team2_proba)
-		print()
-		print('-------------------------')
-		print()
 
 		if team1_proba > team2_proba:
 			winner = winner
 		else:
 			winner = team[i]
+
+		print('Winner: ', winner)
+		print()
+		print('-------------------------')
+		print()
 			
 	return winner
 
 lacc =[]
-racc = []
-sacc = []
 #read files
-file = 'LCK Summer 2016'
+files = []
+for file in os.listdir('C:/Users/khyu7/Documents/Coding/Lol/Data'):
+	file_name, file_ext = os.path.splitext(file)
+	if file_ext == '.csv' and 'Playoffs' not in file_name and 'Standings' not in file_name:
+		files.append(file_name)
 
-regular = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + '.csv', index_col=0)
-playoff = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Playoffs.csv', index_col=0)
-standings = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Standings.csv', index_col=0)
+for file in files:
+	print(file)
+	regular = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + '.csv', index_col=0)
+	playoff = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Playoffs.csv', index_col=0)
+	standings = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Standings.csv', index_col=0)
+	standings = standings.iloc[0:5]
+	print(standings)
 
-teams = np.unique(playoff[['Blue', 'Red']].values)
+	teams = standings['Team'].iloc[::-1]
+	teams = teams.reset_index(drop=True)
+	print(teams)
 
-train_X = regular.iloc[:, 3:-1]
-train_Y = regular.iloc[:, -1]
-test_X = playoff.iloc[:, 3:-1]
-test_Y = playoff.iloc[:, -1]
-'''
-train_X = (train_X-train_X.mean())/train_X.std()
-test_X = (test_X-test_X.mean())/test_X.std()
-'''
+	train_X = regular.iloc[:, 3:-1]
+	train_Y = regular.iloc[:, -1]
+	test_X = playoff.iloc[:, 3:-1]
+	test_Y = playoff.iloc[:, -1]
+	'''
+	train_X = (train_X-train_X.mean())/train_X.std()
+	test_X = (test_X-test_X.mean())/test_X.std()
+	'''
 
-min_max_scaler = preprocessing.MinMaxScaler()
-np_scaled = min_max_scaler.fit_transform(train_X)
-train_X = pd.DataFrame(np_scaled)
+	min_max_scaler = preprocessing.MinMaxScaler()
+	np_scaled = min_max_scaler.fit_transform(train_X)
+	train_X = pd.DataFrame(np_scaled)
 
-np_test_scaled = min_max_scaler.fit_transform(test_X)
-test_X = pd.DataFrame(np_test_scaled)
+	np_test_scaled = min_max_scaler.fit_transform(test_X)
+	test_X = pd.DataFrame(np_test_scaled)
 
-lr = linear_model.LogisticRegression()
-lr.fit(train_X, train_Y)
-y_pred_l = lr.predict(test_X)
+	lr = linear_model.LogisticRegression()
+	lr.fit(train_X, train_Y)
+	y_pred_l = lr.predict(test_X)
 
-svc = svm.SVC(kernel='linear')
-svc.fit(train_X, train_Y)
-y_pred_s = svc.predict(test_X)
+	lscore = accuracy_score(test_Y, y_pred_l)
+	lacc.append(lscore)
 
-lscore = accuracy_score(test_Y, y_pred_l)
-lacc.append(lscore)
+	test_Y = pd.DataFrame(test_Y)
+	playoff['lr'] = y_pred_l
+	#print(playoff.iloc[:, 3:])
+	#print(standings)
 
-test_Y = pd.DataFrame(test_Y)
-playoff['lr'] = y_pred_l
-playoff['svc'] = y_pred_s
-#print(playoff.iloc[:, 3:])
-#print(standings)
-'''
-match_results = []
-for i in range(100000):
-	match_results.append(match(standings, match(standings, match(standings, match(standings, 'Afreeca Freecs', 'Samsung Galaxy', svc), 'SK Telecom T1', svc), 'KT Rolster', svc), 'ROX Tigers', svc))
-'''
-final_winner = simulate_matches(teams, lr)
-print('Winner of the tournament: ', final_winner)
+	final_winner = simulate_matches(teams, lr)
+	print('Winner of the tournament: ', final_winner)
 
-print(np.mean(lacc))
-#playoff.to_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/Prediction/' + file + '_pred.csv')
+	print(np.mean(lacc))
+	#playoff.to_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/Prediction/' + file + '_pred.csv')
