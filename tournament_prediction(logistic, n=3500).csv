@@ -1,5 +1,5 @@
 Season,Round 1,Round 2,Round 3,Final,Accruacy,Final Corr,LR,RFC,SVC
-LCK Spring 2016,Afreeca Freecs,SK Telecom T1,SK Telecom T1,ROX Tigers,None,YES,0.923076923,0.923076923,0.846153846
+LCK Spring 2016,Afreeca Freecs,SK Telecom T1,SK Telecom T1,ROX Tigers,None,NO,0.923076923,0.923076923,0.846153846
 LCK Spring 2017,Afreeca Freecs,KT Rolster,Samsung Galaxy,SK Telecom T1,None,YES,0.916083916,0.961538462,0.877622378
 LCK Spring 2018,SK Telecom T1,KT Rolster,Afreeca Freecs,Kingzone DragonX,Final,YES,0.921833722,0.952136752,0.896192696
 LCK Summer 2016,Samsung Galaxy,KT Rolster,SK Telecom T1,ROX Tigers,Round 2,YES,0.941375291,0.964102564,0.922144522
