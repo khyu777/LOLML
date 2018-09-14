@@ -130,7 +130,7 @@ def getmean(results):
 #get team stats & combine with match stats, save to csv
 def output(results, standings, average, x = ''):
     standings = pd.concat([standings, average], axis=1)
-    path = "C:/Users/khyu7/Documents/Coding/LOL/Data/"
+    path = "Data/"
     if x == '':
         results.to_csv(path + i + '.csv')
         standings.to_csv(path + i + ' Standings.csv')
