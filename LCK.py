@@ -42,7 +42,6 @@ def geturl():
         if 'Season Standings' in j.text:
             standings = getstg(j)
             results = getmh(title)
-            teams = gettm(results)
             average = getmean(results)
             output(results, standings, average)
     return title, standings
@@ -95,6 +94,12 @@ def getmh(title, x=''):
     results = mh[0].iloc[:, 2:5].dropna()            
     results['Blue'] = results['Blue'].str.replace('e-mFire', 'Kongdoo Monster')
     results['Red'] = results['Red'].str.replace('e-mFire', 'Kongdoo Monster')
+    tns = standings['Team'].sort_values()
+    unq = results['Blue'].drop_duplicates().sort_values()
+    
+    teams = dict(zip(tns, unq))
+    if x == '':
+        standings['Team'] = standings['Team'].map(teams)
 
     results['spf_b'] = results['Blue'].map(standings.set_index('Team')['SPF'])
     results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
@@ -112,18 +117,6 @@ def getmh(title, x=''):
 
     return results
 
-#get teams
-def gettm(results):
-    tns = standings['Team'].sort_values()
-    unq = results['Blue'].drop_duplicates().sort_values()
-    
-    teams = dict(zip(tns, unq))
-    print(teams)
-    standings['Team'] = standings['Team'].map(teams)
-    print(standings)
-
-    return teams
-
 def getmean(results):
     average = pd.DataFrame(columns=['GD', 'KD', 'TD', 'DD', 'BD', 'RHD'])
     for team in standings['Team']:
@@ -136,10 +129,7 @@ def getmean(results):
 
 #get team stats & combine with match stats, save to csv
 def output(results, standings, average, x = ''):
-    print(standings, average)
     standings = pd.concat([standings, average], axis=1)
-    print(results)
-    print(standings)
     path = "C:/Users/khyu7/Documents/Coding/LOL/Data/"
     if x == '':
         results.to_csv(path + i + '.csv')
