@@ -5,6 +5,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
 
 def match(data, team1, team2, model, random_scale=5):
 	match = pd.DataFrame(columns = ['sp1', 'gp1', 'p1', 'sp2', 'gp2', 'p2'], index=[0])
@@ -143,11 +144,13 @@ for file in files:
 	sscore = accuracy_score(test_Y, y_pred_3)
 	sacc.append(sscore)
 
-	winners = simulate_matches(teams, lr)
+	startTime = datetime.now()
+	winners = simulate_matches(teams, rf)
+	time.append(datetime.now()-startTime)
 	winners.insert(0, file)
 	winners.append(np.mean(lacc))
 	winners.append(np.mean(racc))
 	winners.append(np.mean(sacc))
 	results.append(winners)
 tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC'])
-tour_table.to_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/Prediction/tournament_prediction.csv')
+tour_table.to_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/Prediction/tournament_prediction.csv', index=False)
