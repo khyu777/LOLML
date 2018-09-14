@@ -110,18 +110,18 @@ def getmh(title, x=''):
     results['p_b'] = results['Blue'].map(standings.set_index('Team')['P'])
     results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
     results['p_r'] = -results['p_r']
-    results['Winner'] = np.where(results['Win'] == 'blue', 1, 0)
 
     stats = getms(history, results)
     results = pd.concat([results, stats], axis=1)
+    results['Winner'] = np.where(results['Win'] == 'blue', 1, 0)
 
     return results
 
 def getmean(results):
     average = pd.DataFrame(columns=['GD', 'KD', 'TD', 'DD', 'BD', 'RHD'])
     for team in standings['Team']:
-        diff = results.loc[results['Blue'] == team].iloc[:, -6:]
-        diff = diff.append(-results.loc[results['Red'] == team].iloc[:, -6:])
+        diff = results.loc[results['Blue'] == team].iloc[:, -7:]
+        diff = diff.append(-results.loc[results['Red'] == team].iloc[:, -7:])
         diff.loc['Mean'] = diff.mean()
         average = average.append(diff.loc['Mean'])
     average = average.reset_index(drop=True)
