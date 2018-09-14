@@ -40,7 +40,6 @@ def simulate_matches(team, model, n_matches=100):
 		match_results = []
 		for j in range(n_matches):
 			match_results.append(match(standings, winner, team[i], model, random_scale=5))
-			match_results.append(match(standings, winner, team[i], model, random_scale=5))
 			match_results.append(match(standings, team[i], winner, model, random_scale=5))
 
 		team1_proba = match_results.count(winner)/len(match_results)*100
