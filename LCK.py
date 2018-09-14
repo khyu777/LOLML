@@ -3,6 +3,12 @@ import urllib.request as urllib
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
+import os
+
+#set working directory and create folders as necessary
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+if not os.path.exists('Data'):
+    os.mkdir('Data')
 
 #specify the url
 lck = 'https://lol.gamepedia.com/Portal:Tournaments/South_Korea'
@@ -23,9 +29,7 @@ def g2int(x):
     return float(x)
 
 def tozero(x):
-    if x == ' - ':
-        x = 0
-    elif x == ' -':
+    if (x == ' - ') or (x == ' -'):
         x = 0
     return x
 

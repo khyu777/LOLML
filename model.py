@@ -7,6 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 
+#set working directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+if not os.path.exists('Data/Prediction'):
+    os.mkdir('Data/Prediction')
+
 def match(data, team1, team2, model, random_scale=5):
 	match = pd.DataFrame(columns = ['sp1', 'gp1', 'p1', 'sp2', 'gp2', 'p2'], index=[0])
 
@@ -87,8 +92,9 @@ def simulate_matches(team, model, n_matches=3500):
 	return winners
 
 #read files
+path = 'Data/'
 files = []
-for file in os.listdir('C:/Users/khyu7/Documents/Coding/Lol/Data'):
+for file in os.listdir(path):
 	file_name, file_ext = os.path.splitext(file)
 	if file_ext == '.csv' and 'Playoffs' not in file_name and 'Standings' not in file_name:
 		files.append(file_name)
@@ -97,11 +103,12 @@ results = []
 lacc = []
 racc = []
 sacc = []
+time = []
 for file in files:
 	print(file)
-	regular = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + '.csv', index_col=0)
-	playoff = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Playoffs.csv', index_col=0)
-	standings = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Standings.csv', index_col=0)
+	regular = pd.read_csv(path + file + '.csv', index_col=0)
+	playoff = pd.read_csv(path + file + ' Playoffs.csv', index_col=0)
+	standings = pd.read_csv(path + file + ' Standings.csv', index_col=0)
 	standings = standings.iloc[0:5]
 
 	teams = standings['Team'].iloc[::-1]
@@ -143,12 +150,14 @@ for file in files:
 
 	sscore = accuracy_score(test_Y, y_pred_3)
 	sacc.append(sscore)
-
-	winners = simulate_matches(teams, svc)
+	startTime = datetime.now()
+	winners = simulate_matches(teams, rf)
+	time.append(datetime.now()-startTime)
 	winners.insert(0, file)
 	winners.append(np.mean(lacc))
 	winners.append(np.mean(racc))
 	winners.append(np.mean(sacc))
 	results.append(winners)
+print(np.sum(time))
 tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC'])
-tour_table.to_csv('Data/Prediction/tournament_prediction.csv', index=False)
+tour_table.to_csv(path + 'Prediction/tournament_prediction.csv', index=False)
