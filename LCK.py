@@ -3,7 +3,6 @@ import urllib.request as urllib
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
 
 #specify the url
 lck = 'https://lol.gamepedia.com/Portal:Tournaments/South_Korea'
@@ -26,6 +25,8 @@ def g2int(x):
 def tozero(x):
     if x == ' - ':
         x = 0
+    elif x == ' -':
+        x = 0
     return x
 
 #get original url
@@ -35,17 +36,16 @@ def geturl():
     fin = soup.find('a', text=i, href=True)
     url = base + str(fin['href'])
     data = urllib.urlopen(url)
-    print('URL read')
     title = BeautifulSoup(data, 'lxml')
-    print('BS read')
     teams = {}
     for j in title.find_all('th'):
         if 'Season Standings' in j.text:
             standings = getstg(j)
-            results, history = getmh(title)
+            results = getmh(title)
             teams = gettm(results)
-            stats = getms(history)
-            output(results, stats)
+            average = getmean(results)
+            output(results, standings, average)
+    return title, standings
 
 #get standings
 def getstg(j):
@@ -57,41 +57,8 @@ def getstg(j):
     standings['P'] = pd.to_numeric(standings['P'])
     return standings
 
-#get match history
-def getmh(title, x=''):
-    name = title.find('h1', {'id': 'firstHeading'}).text
-    name = name.replace(" ", "%20")
-
-    if x == '':
-        url2 = beg + str(name) + end
-    else:
-        url2 = beg + str(name) + x + end
-    match = BeautifulSoup(urllib.urlopen(url2), 'lxml')
-    print('BS Read...')
-    history = match.find('table', {'class': 'wikitable'})
-    print('Table found...')
-    mh = pd.read_html(str(history), header=1)            
-    results = mh[0].iloc[:, 2:5].dropna()            
-    results['Blue'] = results['Blue'].str.replace('e-mFire', 'Kongdoo Monster')
-    results['Red'] = results['Red'].str.replace('e-mFire', 'Kongdoo Monster')
-
-    return results, history
-
-#get teams
-def gettm(results):
-    tns = standings['Team'].sort_values()
-    unq = results['Blue'].drop_duplicates().sort_values()
-    
-    teams = dict(zip(tns, unq))
-    print(teams)
-    standings['Team'] = standings['Team'].map(teams)
-    print(standings)
-    #standings.to_csv("C:/Users/khyu7/Documents/Coding/LOL/Data/" + i + ' Standings.csv')
-
-    return teams
-
 #get match stats
-def getms(history):
+def getms(history, results):
     l = []
     for row in history.find_all('tr'):
         column = row.find_all('td', {'class':'_toggle stats'})
@@ -113,8 +80,22 @@ def getms(history):
 
     return stats
 
-#get team stats & combine with match stats, save to csv
-def output(results, stats, x = ''):
+#get match history
+def getmh(title, x=''):
+    name = title.find('h1', {'id': 'firstHeading'}).text
+    name = name.replace(" ", "%20")
+
+    if x == '':
+        url2 = beg + str(name) + end
+    else:
+        url2 = beg + str(name) + x + end
+    match = BeautifulSoup(urllib.urlopen(url2), 'lxml')
+    history = match.find('table', {'class': 'wikitable'})
+    mh = pd.read_html(str(history), header=1)            
+    results = mh[0].iloc[:, 2:5].dropna()            
+    results['Blue'] = results['Blue'].str.replace('e-mFire', 'Kongdoo Monster')
+    results['Red'] = results['Red'].str.replace('e-mFire', 'Kongdoo Monster')
+
     results['spf_b'] = results['Blue'].map(standings.set_index('Team')['SPF'])
     results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
     results['spf_r'] = results['Red'].map(standings.set_index('Team')['SPF'])
@@ -125,23 +106,46 @@ def output(results, stats, x = ''):
     results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
     results['p_r'] = -results['p_r']
     results['Winner'] = np.where(results['Win'] == 'blue', 1, 0)
-    results = pd.concat([results,stats], axis=1)
+
+    stats = getms(history, results)
+    results = pd.concat([results, stats], axis=1)
+
+    return results
+
+#get teams
+def gettm(results):
+    tns = standings['Team'].sort_values()
+    unq = results['Blue'].drop_duplicates().sort_values()
+    
+    teams = dict(zip(tns, unq))
+    print(teams)
+    standings['Team'] = standings['Team'].map(teams)
+    print(standings)
+
+    return teams
+
+def getmean(results):
+    average = pd.DataFrame(columns=['GD', 'KD', 'TD', 'DD', 'BD', 'RHD'])
+    for team in standings['Team']:
+        diff = results.loc[results['Blue'] == team].iloc[:, -6:]
+        diff = diff.append(-results.loc[results['Red'] == team].iloc[:, -6:])
+        diff.loc['Mean'] = diff.mean()
+        average = average.append(diff.loc['Mean'])
+    average = average.reset_index(drop=True)
+    return average
+
+#get team stats & combine with match stats, save to csv
+def output(results, standings, average, x = ''):
+    print(standings, average)
+    standings = pd.concat([standings, average], axis=1)
     print(results)
     print(standings)
     path = "C:/Users/khyu7/Documents/Coding/LOL/Data/"
-    #if x == '':
-        #results.to_csv(path + i + '.csv')
-    #else:
-        #results.to_csv(path + i + x + '.csv')
-
-def getmean(results):
-    for team in standings['Team'].iloc[0:5]:
-        diff = results.loc[results['Blue'] == team].iloc[:, -6:]
-        diff = diff.append(-results.loc[results['Red'] == team].iloc[:, -6:])
-        diff = diff.reset_index(drop=True)
-        diff.loc['Mean'] = diff.mean()
-        print(team)
-        print(diff)
+    if x == '':
+        results.to_csv(path + i + '.csv')
+        standings.to_csv(path + i + ' Standings.csv')
+    else:
+        results.to_csv(path + i + x + '.csv')
 
 #get unique tournament list & url
 base = 'https://lol.gamepedia.com'
@@ -151,15 +155,8 @@ teams = {}
 for i in df[0]['Tournament']:
     if 'LCK' in i:
         print(i)
-        geturl()
+        title, average = geturl()
         print()
         print(i + ' Playoffs')
-        fin = soup.find('a', text=i, href=True)
-        url = base + str(fin['href'])
-        data1 = urllib.urlopen(url)
-        print('URL Read')
-        title = BeautifulSoup(data1, 'lxml')
-        print('BS Read')
-        results, history = getmh(title, x='%20Playoffs')
-        stats = getms(history)
-        output(results, stats, x = ' Playoffs')
+        results = getmh(title, x='%20Playoffs')
+        output(results, standings, average, x = ' Playoffs')
