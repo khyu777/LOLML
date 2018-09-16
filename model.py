@@ -1,11 +1,13 @@
 import pandas as pd
 import os
 from sklearn import linear_model, preprocessing, svm
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
+import xgboost as xgb
 
 #set working directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -104,60 +106,65 @@ lacc = []
 racc = []
 sacc = []
 time = []
+results = []
+lacc = []
+racc = []
+sacc = []
+xacc = []
 for file in files:
 	print(file)
-	regular = pd.read_csv(path + file + '.csv', index_col=0)
-	playoff = pd.read_csv(path + file + ' Playoffs.csv', index_col=0)
-	standings = pd.read_csv(path + file + ' Standings.csv', index_col=0)
+	regular = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + '.csv', index_col=0)
+	playoff = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Playoffs.csv', index_col=0)
+	standings = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Standings.csv', index_col=0)
 	standings = standings.iloc[0:5]
 
 	teams = standings['Team'].iloc[::-1]
 	teams = teams.reset_index(drop=True)
 
-	train_X = regular.iloc[:, 3:-1]
-	train_Y = regular.iloc[:, -1]
-	test_X = playoff.iloc[:, 3:-1]
-	test_Y = playoff.iloc[:, -1]
-	'''
-	train_X = (train_X-train_X.mean())/train_X.std()
-	test_X = (test_X-test_X.mean())/test_X.std()
-	'''
+	#xgboost testing
+	X = regular.iloc[:, 3:-1]
+	y = regular.iloc[:, -1]
+	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 	min_max_scaler = preprocessing.MinMaxScaler()
-	np_scaled = min_max_scaler.fit_transform(train_X)
-	train_X = pd.DataFrame(np_scaled)
+	np_scaled = min_max_scaler.fit_transform(X_train)
+	X_train = pd.DataFrame(np_scaled)
+	np_test_scaled = min_max_scaler.fit_transform(X_test)
+	X_test = pd.DataFrame(np_test_scaled)
 
-	np_test_scaled = min_max_scaler.fit_transform(test_X)
-	test_X = pd.DataFrame(np_test_scaled)
+	model = xgb.XGBClassifier()
+	model.fit(X_train, y_train)
+	y_pred = model.predict(X_test)
+	accuracy = accuracy_score(y_test, y_pred)
+	xacc.append(accuracy)
 
 	lr = linear_model.LogisticRegression()
-	lr.fit(train_X, train_Y)
-	y_pred_l = lr.predict(test_X)
+	lr.fit(X_train, y_train)
+	y_pred_l = lr.predict(X_test)
 
-	lscore = accuracy_score(test_Y, y_pred_l)
+	lscore = accuracy_score(y_test, y_pred_l)
 	lacc.append(lscore)
 
 	rf = RandomForestClassifier()
-	rf.fit(train_X, train_Y)
-	y_pred_2 = rf.predict(test_X)
+	rf.fit(X_train, y_train)
+	y_pred_2 = rf.predict(X_test)
 
-	rscore = accuracy_score(test_Y, y_pred_2)
+	rscore = accuracy_score(y_test, y_pred_2)
 	racc.append(rscore)
 
 	svc = svm.SVC()
-	svc.fit(train_X, train_Y)
-	y_pred_3 = svc.predict(test_X)
+	svc.fit(X_train, y_train)
+	y_pred_3 = svc.predict(X_test)
 
-	sscore = accuracy_score(test_Y, y_pred_3)
+	sscore = accuracy_score(y_test, y_pred_3)
 	sacc.append(sscore)
-	startTime = datetime.now()
-	winners = simulate_matches(teams, rf)
-	time.append(datetime.now()-startTime)
+
+	winners = simulate_matches(teams, svc)
 	winners.insert(0, file)
 	winners.append(np.mean(lacc))
 	winners.append(np.mean(racc))
 	winners.append(np.mean(sacc))
+	winners.append(np.mean(xacc))
 	results.append(winners)
-print(np.sum(time))
-tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC'])
-tour_table.to_csv(path + 'Prediction/tournament_prediction.csv', index=False)
+tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC', 'XGB'])
+tour_table.to_csv('Data/Prediction/tournament_prediction.csv', index=False)
