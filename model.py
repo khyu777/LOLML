@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 from sklearn import linear_model, preprocessing, svm
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
@@ -125,18 +125,19 @@ for file in files:
 
 	min_max_scaler = preprocessing.MinMaxScaler()
 	np_scaled = min_max_scaler.fit_transform(X_train)
-	X_train = pd.DataFrame(np_scaled)
+	X_train = pd.DataFrame(np_scaled).values
 	np_test_scaled = min_max_scaler.fit_transform(X_test)
-	X_test = pd.DataFrame(np_test_scaled)
-
-	X_train = X_train.as_matrix()
-	X_test = X_test.as_matrix()
+	X_test = pd.DataFrame(np_test_scaled).values
 
 	xc = xgb.XGBClassifier()
 	xc.fit(X_train, y_train)
 	y_pred = xc.predict(X_test)
 	accuracy = accuracy_score(y_test, y_pred)
 	xacc.append(accuracy)
+
+	#k-fold cv
+	kfold = KFold(n_splits=5, random_state=5)
+	kfscore = cross_val_score(xc, X_train, y_train, cv=kfold)
 
 	lr = linear_model.LogisticRegression()
 	lr.fit(X_train, y_train)
@@ -165,6 +166,7 @@ for file in files:
 	winners.append(np.mean(racc))
 	winners.append(np.mean(sacc))
 	winners.append(np.mean(xacc))
+	winners.append(round(kfscore.mean()*100, 2))
 	results.append(winners)
-tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC', 'XGB'])
+tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC', 'XGB', 'Validation Score'])
 tour_table.to_csv('Data/Prediction/tournament_prediction.csv', index=False)
