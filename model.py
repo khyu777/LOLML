@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 import xgboost as xgb
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 #set working directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +55,7 @@ def match(data, team1, team2, model, random_scale=5):
 		winner = team2
 	return winner
 
-def simulate_matches(team, model, n_matches=3500):
+def simulate_matches(team, model, n_matches=100):
 	winner = team[0]
 	print('-------------------------')
 	print()
@@ -105,11 +107,6 @@ results = []
 lacc = []
 racc = []
 sacc = []
-time = []
-results = []
-lacc = []
-racc = []
-sacc = []
 xacc = []
 for file in files:
 	print(file)
@@ -132,9 +129,12 @@ for file in files:
 	np_test_scaled = min_max_scaler.fit_transform(X_test)
 	X_test = pd.DataFrame(np_test_scaled)
 
-	model = xgb.XGBClassifier()
-	model.fit(X_train, y_train)
-	y_pred = model.predict(X_test)
+	X_train = X_train.as_matrix()
+	X_test = X_test.as_matrix()
+
+	xc = xgb.XGBClassifier()
+	xc.fit(X_train, y_train)
+	y_pred = xc.predict(X_test)
 	accuracy = accuracy_score(y_test, y_pred)
 	xacc.append(accuracy)
 
@@ -159,7 +159,7 @@ for file in files:
 	sscore = accuracy_score(y_test, y_pred_3)
 	sacc.append(sscore)
 
-	winners = simulate_matches(teams, svc)
+	winners = simulate_matches(teams, xc)
 	winners.insert(0, file)
 	winners.append(np.mean(lacc))
 	winners.append(np.mean(racc))
