@@ -9,6 +9,7 @@ import numpy as np
 from datetime import datetime
 import xgboost as xgb
 import warnings
+import random
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 #set working directory
@@ -16,7 +17,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 if not os.path.exists('Data/Prediction'):
     os.mkdir('Data/Prediction')
 
-def match(data, team1, team2, model, random_scale=5):
+#run a single match
+def match(data, team1, team2, model, random_scale=1):
 	match = pd.DataFrame(columns = ['sp1', 'gp1', 'p1', 'sp2', 'gp2', 'p2'], index=[0])
 
 	gd1 = data[data.Team == team1]['GD'].iloc[0]
@@ -35,13 +37,13 @@ def match(data, team1, team2, model, random_scale=5):
 	match['gp2'] = -match['gp2']
 	match['p2'] = data[data.Team == team2]['P'].iloc[0]
 	match['p2'] = -match['p2']
-
-	match['gd1'] = np.random.normal(gd1, scale=random_scale)
-	match['kd1'] = np.random.normal(kd1, scale=random_scale)
-	match['td1'] = np.random.normal(td1, scale=random_scale)
-	match['dd1'] = np.random.normal(dd1, scale=random_scale)
-	match['bd1'] = np.random.normal(bd1, scale=random_scale)
-	match['rhd1'] = np.random.normal(rhd1, scale=random_scale)
+	
+	match['gd1'] = np.random.normal(gd1)
+	match['kd1'] = np.random.normal(kd1)
+	match['td1'] = np.random.normal(td1)
+	match['dd1'] = np.random.normal(dd1)
+	match['bd1'] = np.random.normal(bd1)
+	match['rhd1'] = np.random.normal(rhd1)
 	
 	match_array = match.values
 	
@@ -55,16 +57,40 @@ def match(data, team1, team2, model, random_scale=5):
 		winner = team2
 	return winner
 
-def simulate_matches(team, model, n_matches=100):
+#match simulation
+def simulate_matches(team, model, n_matches=2000):
 	winner = team[0]
 	print('-------------------------')
 	print()
 	winners = []
+	place = []
 	for i in range(1,5):
 		match_results = []
 		for j in range(n_matches):
-			match_results.append(match(standings, winner, team[i], model, random_scale=5))
-			match_results.append(match(standings, team[i], winner, model, random_scale=5))
+			k = np.random.randint(0,2)
+			if i == 1:
+				if k == 0:
+					match_results.append(match(standings, winner, team[i], model))
+					match_results.append(match(standings, team[i], winner, model))
+					match_results.append(match(standings, winner, team[i], model))
+				else:
+					match_results.append(match(standings, team[i], winner, model))
+					match_results.append(match(standings, winner, team[i], model))
+					match_results.append(match(standings, team[i], winner, model))
+
+			else:
+				if k == 0:
+					match_results.append(match(standings, winner, team[i], model))
+					match_results.append(match(standings, team[i], winner, model))
+					match_results.append(match(standings, winner, team[i], model))
+					match_results.append(match(standings, team[i], winner, model))
+					match_results.append(match(standings, winner, team[i], model))
+				else:
+					match_results.append(match(standings, team[i], winner, model))
+					match_results.append(match(standings, winner, team[i], model))
+					match_results.append(match(standings, team[i], winner, model))
+					match_results.append(match(standings, winner, team[i], model))
+					match_results.append(match(standings, team[i], winner, model))
 
 		team1_proba = match_results.count(winner)/len(match_results)*100
 		team2_proba = match_results.count(team[i])/len(match_results)*100
@@ -74,9 +100,13 @@ def simulate_matches(team, model, n_matches=100):
 
 		if team1_proba > team2_proba:
 			winner = winner
+			loser = team[i]
 		else:
+			loser = winner
 			winner = team[i]
 		winners.append(winner)
+		if i < 5:
+			place.append(loser)
 		'''
 		p_list = []
 		for num in range(len(match_results)):
@@ -93,9 +123,11 @@ def simulate_matches(team, model, n_matches=100):
 		print()
 		print('-------------------------')
 		print()
-	return winners
+	place.append(winners[-1])
+	print(place)
+	return winners, place
 
-#read files
+#read files and store names
 path = 'Data/'
 files = []
 for file in os.listdir(path):
@@ -108,8 +140,10 @@ lacc = []
 racc = []
 sacc = []
 xacc = []
+places = []
 for file in files:
 	print(file)
+	#read data
 	regular = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + '.csv', index_col=0)
 	playoff = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Playoffs.csv', index_col=0)
 	standings = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Standings.csv', index_col=0)
@@ -123,12 +157,14 @@ for file in files:
 	y = regular.iloc[:, -1]
 	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+	#normalize data
 	min_max_scaler = preprocessing.MinMaxScaler()
 	np_scaled = min_max_scaler.fit_transform(X_train)
 	X_train = pd.DataFrame(np_scaled).values
 	np_test_scaled = min_max_scaler.fit_transform(X_test)
 	X_test = pd.DataFrame(np_test_scaled).values
 
+	#train XGB model
 	xc = xgb.XGBClassifier()
 	xc.fit(X_train, y_train)
 	y_pred = xc.predict(X_test)
@@ -139,6 +175,7 @@ for file in files:
 	kfold = KFold(n_splits=5, random_state=5)
 	kfscore = cross_val_score(xc, X_train, y_train, cv=kfold)
 
+	#train logistic regression model
 	lr = linear_model.LogisticRegression()
 	lr.fit(X_train, y_train)
 	y_pred_l = lr.predict(X_test)
@@ -146,6 +183,7 @@ for file in files:
 	lscore = accuracy_score(y_test, y_pred_l)
 	lacc.append(lscore)
 
+	#trian random forest model
 	rf = RandomForestClassifier()
 	rf.fit(X_train, y_train)
 	y_pred_2 = rf.predict(X_test)
@@ -153,6 +191,7 @@ for file in files:
 	rscore = accuracy_score(y_test, y_pred_2)
 	racc.append(rscore)
 
+	#train svc
 	svc = svm.SVC()
 	svc.fit(X_train, y_train)
 	y_pred_3 = svc.predict(X_test)
@@ -160,13 +199,16 @@ for file in files:
 	sscore = accuracy_score(y_test, y_pred_3)
 	sacc.append(sscore)
 
-	winners = simulate_matches(teams, xc)
-	winners.insert(0, file)
-	winners.append(np.mean(lacc))
-	winners.append(np.mean(racc))
-	winners.append(np.mean(sacc))
-	winners.append(np.mean(xacc))
-	winners.append(round(kfscore.mean()*100, 2))
-	results.append(winners)
-tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC', 'XGB', 'Validation Score'])
-tour_table.to_csv('Data/Prediction/tournament_prediction.csv', index=False)
+	#simulate matches and store results
+	winners, place = simulate_matches(teams, xc)
+	place.insert(0, file)
+	place.append(np.mean(lacc))
+	place.append(np.mean(racc))
+	place.append(np.mean(sacc))
+	place.append(np.mean(xacc))
+	place.append(round(kfscore.mean()*100, 2))
+	places.append(place)
+#tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC', 'XGB', 'Validation Score'])
+#tour_table.to_csv('Data/Prediction/tournament_prediction.csv', index=False)
+final_result = pd.DataFrame(places, columns=['Season', '5th', '4th', '3rd', '2nd', 'WINNER', 'LR', 'RFC', 'SVC', 'XGB', 'Validation Score'])
+final_result.to_csv('Data/Prediction/final_standings.csv', index=False)
