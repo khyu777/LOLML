@@ -29,21 +29,24 @@ def match(data, team1, team2, model, random_scale=1):
 	rhd1 = data[data.Team == team1]['RHD'].iloc[0]
 
 	match['sp1'] = data[data.Team == team1]['SPF'].iloc[0]
-	match['gp1'] = data[data.Team == team1]['GPF'].iloc[0]
-	match['p1'] = data[data.Team == team1]['P'].iloc[0]
 	match['sp2'] = data[data.Team == team2]['SPF'].iloc[0]
 	match['sp2'] = -match['sp2']
-	match['gp2'] = data[data.Team == team2]['GPF'].iloc[0]
-	match['gp2'] = -match['gp2']
-	match['p2'] = data[data.Team == team2]['P'].iloc[0]
-	match['p2'] = -match['p2']
+	if len(data.columns) == 13:
+		match['gp1'] = data[data.Team == team1]['GPF'].iloc[0]
+		match['gp2'] = data[data.Team == team2]['GPF'].iloc[0]
+		match['gp2'] = -match['gp2']
+	elif len(data.columns) == 14:
+		match['p1'] = data[data.Team == team1]['P'].iloc[0]
+		match['p2'] = data[data.Team == team2]['P'].iloc[0]
+		match['p2'] = -match['p2']
 	
-	match['gd1'] = np.random.normal(gd1)
-	match['kd1'] = np.random.normal(kd1)
-	match['td1'] = np.random.normal(td1)
-	match['dd1'] = np.random.normal(dd1)
-	match['bd1'] = np.random.normal(bd1)
-	match['rhd1'] = np.random.normal(rhd1)
+	match['gd1'] = np.random.normal(gd1, 3)
+	match['kd1'] = np.random.normal(kd1, 3)
+	match['td1'] = np.random.normal(td1, 3)
+	match['dd1'] = np.random.normal(dd1, 3)
+	match['bd1'] = np.random.normal(bd1, 3)
+	match['rhd1'] = np.random.normal(rhd1, 3)
+	match = match.dropna(axis=1)
 	
 	match_array = match.values
 	
@@ -58,7 +61,7 @@ def match(data, team1, team2, model, random_scale=1):
 	return winner
 
 #match simulation
-def simulate_matches(team, model, n_matches=2000):
+def simulate_matches(team, model, n_matches=1000):
 	winner = team[0]
 	print('-------------------------')
 	print()
@@ -67,30 +70,8 @@ def simulate_matches(team, model, n_matches=2000):
 	for i in range(1,5):
 		match_results = []
 		for j in range(n_matches):
-			k = np.random.randint(0,2)
-			if i == 1:
-				if k == 0:
-					match_results.append(match(standings, winner, team[i], model))
-					match_results.append(match(standings, team[i], winner, model))
-					match_results.append(match(standings, winner, team[i], model))
-				else:
-					match_results.append(match(standings, team[i], winner, model))
-					match_results.append(match(standings, winner, team[i], model))
-					match_results.append(match(standings, team[i], winner, model))
-
-			else:
-				if k == 0:
-					match_results.append(match(standings, winner, team[i], model))
-					match_results.append(match(standings, team[i], winner, model))
-					match_results.append(match(standings, winner, team[i], model))
-					match_results.append(match(standings, team[i], winner, model))
-					match_results.append(match(standings, winner, team[i], model))
-				else:
-					match_results.append(match(standings, team[i], winner, model))
-					match_results.append(match(standings, winner, team[i], model))
-					match_results.append(match(standings, team[i], winner, model))
-					match_results.append(match(standings, winner, team[i], model))
-					match_results.append(match(standings, team[i], winner, model))
+			match_results.append(match(standings, winner, team[i], model))
+			match_results.append(match(standings, team[i], winner, model))
 
 		team1_proba = match_results.count(winner)/len(match_results)*100
 		team2_proba = match_results.count(team[i])/len(match_results)*100
@@ -134,6 +115,7 @@ for file in os.listdir(path):
 	file_name, file_ext = os.path.splitext(file)
 	if file_ext == '.csv' and 'Playoffs' not in file_name and 'Standings' not in file_name:
 		files.append(file_name)
+league = files[0][0:3]
 
 results = []
 lacc = []
@@ -145,7 +127,7 @@ for file in files:
 	print(file)
 	#read data
 	regular = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + '.csv', index_col=0)
-	playoff = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Playoffs.csv', index_col=0)
+	#playoff = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Playoffs.csv', index_col=0)
 	standings = pd.read_csv('C:/Users/khyu7/Documents/Coding/Lol/Data/' + file + ' Standings.csv', index_col=0)
 	standings = standings.iloc[0:5]
 
@@ -171,10 +153,6 @@ for file in files:
 	accuracy = accuracy_score(y_test, y_pred)
 	xacc.append(accuracy)
 
-	#k-fold cv
-	kfold = KFold(n_splits=5, random_state=5)
-	kfscore = cross_val_score(xc, X_train, y_train, cv=kfold)
-
 	#train logistic regression model
 	lr = linear_model.LogisticRegression()
 	lr.fit(X_train, y_train)
@@ -199,16 +177,29 @@ for file in files:
 	sscore = accuracy_score(y_test, y_pred_3)
 	sacc.append(sscore)
 
+	#k-fold cv
+	kfold = KFold(n_splits=5, random_state=5)
+	kfscore_xgb = cross_val_score(xc, X_train, y_train, cv=kfold)
+	kfold = KFold(n_splits=5, random_state=5)
+	kfscore_lr = cross_val_score(lr, X_train, y_train, cv=kfold)
+	kfold = KFold(n_splits=5, random_state=5)
+	kfscore_rf = cross_val_score(rf, X_train, y_train, cv=kfold)
+	kfold = KFold(n_splits=5, random_state=5)
+	kfscore_svc = cross_val_score(svc, X_train, y_train, cv=kfold)
+
 	#simulate matches and store results
-	winners, place = simulate_matches(teams, xc)
+	winners, place = simulate_matches(teams, svc)
 	place.insert(0, file)
 	place.append(np.mean(lacc))
 	place.append(np.mean(racc))
 	place.append(np.mean(sacc))
 	place.append(np.mean(xacc))
-	place.append(round(kfscore.mean()*100, 2))
+	place.append(round(kfscore_xgb.mean()*100, 2))
+	place.append(round(kfscore_lr.mean()*100, 2))
+	place.append(round(kfscore_rf.mean()*100, 2))
+	place.append(round(kfscore_svc.mean()*100, 2))
 	places.append(place)
 #tour_table = pd.DataFrame(results, columns= ['Season', 'Round 1', 'Round 2', 'Round 3', 'Final', 'LR', 'RFC', 'SVC', 'XGB', 'Validation Score'])
 #tour_table.to_csv('Data/Prediction/tournament_prediction.csv', index=False)
-final_result = pd.DataFrame(places, columns=['Season', '5th', '4th', '3rd', '2nd', 'WINNER', 'LR', 'RFC', 'SVC', 'XGB', 'Validation Score'])
-final_result.to_csv('Data/Prediction/final_standings.csv', index=False)
+final_result = pd.DataFrame(places, columns=['Season', '5th', '4th', '3rd', '2nd', 'WINNER', 'LR', 'RFC', 'SVC', 'XGB', 'X_Val', 'L_Val', 'R_Val', 'S_Val'])
+final_result.to_csv('Data/Prediction/' + league + '_final_standings.csv', index=False)

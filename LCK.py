@@ -11,7 +11,8 @@ if not os.path.exists('Data'):
     os.mkdir('Data')
 
 #specify the url
-lck = 'https://lol.gamepedia.com/Portal:Tournaments/South_Korea'
+country = 'North_America'
+lck = 'https://lol.gamepedia.com/Portal:Tournaments/' + country
 
 #return html to variable 'page'
 page = urllib.urlopen(lck)
@@ -53,15 +54,28 @@ def geturl():
 #get standings
 def getstg(j):
     standings = pd.read_html(str(j.find_parent('table')))
-    standings = standings[0].iloc[8:, 1:].reset_index(drop=True)
-    standings.columns = ['Team', 'Series', 'SP', 'Games', 'GP', 'P']
+    numeric = standings[0][0].str.isnumeric()
+    teamcount = (numeric==True).sum()
+    standings = standings[0].dropna(axis=1,thresh=teamcount)
+    standings = standings.dropna()
+    standings = standings.loc[standings[0].str.isnumeric()]
+    standings = standings.iloc[:, 1:].reset_index(drop=True)
+    if len(standings.columns) == 3:
+        standings.columns = ['Team', 'Series', 'SP'] #, 'Games', 'GP', 'P']
+    elif len(standings.columns) == 5:
+        standings.columns = ['Team', 'Series', 'SP', 'Games', 'GP']
+        standings['GPF'] = standings.GP.apply(p2f)
+    elif len(standings.columns) == 7:
+        standings.columns = ['Team', 'Series', 'SP', 'Games', 'GP', 'P']
+        standings['GPF'] = standings.GP.apply(p2f)
+        standings['P'] = pd.to_numeric(standings['P'])
+    print(standings)
     standings['SPF'] = standings.SP.apply(p2f)
-    standings['GPF'] = standings.GP.apply(p2f)
-    standings['P'] = pd.to_numeric(standings['P'])
     return standings
 
 #get match stats
 def getms(history, results):
+    print('match stats..')
     l = []
     for row in history.find_all('tr'):
         column = row.find_all('td', {'class':'_toggle stats'})
@@ -85,6 +99,7 @@ def getms(history, results):
 
 #get match history
 def getmh(title, x=''):
+    print('match history...')
     name = title.find('h1', {'id': 'firstHeading'}).text
     name = name.replace(" ", "%20")
 
@@ -104,16 +119,17 @@ def getmh(title, x=''):
     teams = dict(zip(tns, unq))
     if x == '':
         standings['Team'] = standings['Team'].map(teams)
-
     results['spf_b'] = results['Blue'].map(standings.set_index('Team')['SPF'])
-    results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
     results['spf_r'] = results['Red'].map(standings.set_index('Team')['SPF'])
     results['spf_r'] = -results['spf_r']
-    results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
-    results['gpf_r'] = -results['gpf_r']
-    results['p_b'] = results['Blue'].map(standings.set_index('Team')['P'])
-    results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
-    results['p_r'] = -results['p_r']
+    if len(standings.columns) == 7:
+        results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
+        results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
+        results['gpf_r'] = -results['gpf_r']
+    elif len(standings.columns) == 8:
+        results['p_b'] = results['Blue'].map(standings.set_index('Team')['P'])
+        results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
+        results['p_r'] = -results['p_r']
 
     stats = getms(history, results)
     results = pd.concat([results, stats], axis=1)
@@ -122,10 +138,11 @@ def getmh(title, x=''):
     return results
 
 def getmean(results):
+    print('mean..')
     average = pd.DataFrame(columns=['GD', 'KD', 'TD', 'DD', 'BD', 'RHD'])
     for team in standings['Team']:
-        diff = results.loc[results['Blue'] == team].iloc[:, -7:]
-        diff = diff.append(-results.loc[results['Red'] == team].iloc[:, -7:])
+        diff = results.loc[results['Blue'] == team].iloc[:, -7:-1]
+        diff = diff.append(-results.loc[results['Red'] == team].iloc[:, -7:-1])
         diff.loc['Mean'] = diff.mean()
         average = average.append(diff.loc['Mean'])
     average = average.reset_index(drop=True)
@@ -133,6 +150,7 @@ def getmean(results):
 
 #get team stats & combine with match stats, save to csv
 def output(results, standings, average, x = ''):
+    print('output...')
     standings = pd.concat([standings, average], axis=1)
     path = "Data/"
     if x == '':
@@ -147,10 +165,9 @@ beg = 'https://lol.gamepedia.com/Special:RunQuery/MatchHistoryTournament?MHT%5Bt
 end = '&MHT%5Blimit%5D=250&MHT%5Boffset%5D=0&MHT%5Btext%5D=Yes&pfRunQueryFormName=MatchHistoryTournament'
 teams = {}
 for i in df[0]['Tournament']:
-    if 'LCK' in i:
-        print(i)
-        title, average = geturl()
-        print()
-        print(i + ' Playoffs')
-        results = getmh(title, x='%20Playoffs')
-        output(results, standings, average, x = ' Playoffs')
+    print(i)
+    title, average = geturl()
+    print()
+    print(i + ' Playoffs')
+    results = getmh(title, x='%20Playoffs')
+    output(results, standings, average, x = ' Playoffs')
