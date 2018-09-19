@@ -11,7 +11,7 @@ if not os.path.exists('Data'):
     os.mkdir('Data')
 
 #specify the url
-country = 'North_America'
+country = 'South_Korea'
 lck = 'https://lol.gamepedia.com/Portal:Tournaments/' + country
 
 #return html to variable 'page'
@@ -47,7 +47,7 @@ def geturl():
         if 'Season Standings' in j.text:
             standings = getstg(j)
             results = getmh(title)
-            average = getmean(results)
+            average = getmean(results, standings)
             output(results, standings, average)
     return title, standings
 
@@ -65,12 +65,12 @@ def getstg(j):
     elif len(standings.columns) == 5:
         standings.columns = ['Team', 'Series', 'SP', 'Games', 'GP']
         standings['GPF'] = standings.GP.apply(p2f)
-    elif len(standings.columns) == 7:
+    elif len(standings.columns) == 6:
         standings.columns = ['Team', 'Series', 'SP', 'Games', 'GP', 'P']
         standings['GPF'] = standings.GP.apply(p2f)
         standings['P'] = pd.to_numeric(standings['P'])
-    print(standings)
     standings['SPF'] = standings.SP.apply(p2f)
+    print(standings)
     return standings
 
 #get match stats
@@ -127,6 +127,9 @@ def getmh(title, x=''):
         results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
         results['gpf_r'] = -results['gpf_r']
     elif len(standings.columns) == 8:
+        results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
+        results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
+        results['gpf_r'] = -results['gpf_r']
         results['p_b'] = results['Blue'].map(standings.set_index('Team')['P'])
         results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
         results['p_r'] = -results['p_r']
@@ -137,27 +140,42 @@ def getmh(title, x=''):
 
     return results
 
-def getmean(results):
+def getmean(results, standings):
     print('mean..')
-    average = pd.DataFrame(columns=['GD', 'KD', 'TD', 'DD', 'BD', 'RHD'])
-    for team in standings['Team']:
-        diff = results.loc[results['Blue'] == team].iloc[:, -7:-1]
-        diff = diff.append(-results.loc[results['Red'] == team].iloc[:, -7:-1])
-        diff.loc['Mean'] = diff.mean()
-        average = average.append(diff.loc['Mean'])
+    topfive = standings.iloc[:5, :]['Team']
+    average = pd.DataFrame(columns=['Team', 'Against', 'GD', 'KD', 'TD', 'DD', 'BD', 'RHD'])
+    for team in topfive:
+        indiv = results.loc[results['Blue'] == team]
+        indivi = results.loc[results['Red'] == team]
+        for column in indivi.columns:
+            if np.issubdtype(indivi[column], np.number):
+                indivi[column] = -indivi[column]
+        for j in topfive:
+            if j != team:
+                individ = pd.DataFrame()
+                individ = individ.append(indiv.loc[indiv['Red'] == j])
+                individ = individ.append(indivi.loc[indivi['Blue'] == j])
+                individ = individ.iloc[:, -7:-1]
+                individ.loc['Mean'] = individ.mean()
+                s = individ.loc['Mean']
+                s.loc['Against'] = j
+                s.loc['Team'] = team
+                average = average.append(s)
     average = average.reset_index(drop=True)
     return average
 
 #get team stats & combine with match stats, save to csv
 def output(results, standings, average, x = ''):
     print('output...')
-    standings = pd.concat([standings, average], axis=1)
+    #standings = pd.concat([standings, average], axis=1)
     path = "Data/"
     if x == '':
-        results.to_csv(path + i + '.csv')
-        standings.to_csv(path + i + ' Standings.csv')
-    else:
-        results.to_csv(path + i + x + '.csv')
+    #    results.to_csv(path + i + '.csv')
+        print(standings)
+        print(average)
+        #average.to_csv(path + i + '_jeonjuk.csv')
+    #else:
+    #    results.to_csv(path + i + x + '.csv')
 
 #get unique tournament list & url
 base = 'https://lol.gamepedia.com'
@@ -167,7 +185,7 @@ teams = {}
 for i in df[0]['Tournament']:
     print(i)
     title, average = geturl()
-    print()
-    print(i + ' Playoffs')
-    results = getmh(title, x='%20Playoffs')
-    output(results, standings, average, x = ' Playoffs')
+    #print()
+    #print(i + ' Playoffs')
+    #results = getmh(title, x='%20Playoffs')
+    #output(results, standings, average, x = ' Playoffs')
