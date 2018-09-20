@@ -5,23 +5,6 @@ import pandas as pd
 import numpy as np
 import os
 
-#set working directory and create folders as necessary
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-if not os.path.exists('Data'):
-    os.mkdir('Data')
-
-#specify the url
-country = 'South_Korea'
-lck = 'https://lol.gamepedia.com/Portal:Tournaments/' + country
-
-#return html to variable 'page'
-page = urllib.urlopen(lck)
-
-#get tournament table
-soup = BeautifulSoup(page, 'html.parser')
-tournaments = soup.find('table', {"class" : "wikitable sortable"})
-df = pd.read_html(str(tournaments), header=0)
-
 def p2f(x):
     return float(x.strip('%'))/100
 
@@ -121,18 +104,22 @@ def getmh(title, x=''):
         standings['Team'] = standings['Team'].map(teams)
     results['spf_b'] = results['Blue'].map(standings.set_index('Team')['SPF'])
     results['spf_r'] = results['Red'].map(standings.set_index('Team')['SPF'])
-    results['spf_r'] = -results['spf_r']
+    results['spf_diff'] = results['spf_b'] - results['spf_r']
+    results = results.drop(['spf_b', 'spf_r'], axis=1)
     if len(standings.columns) == 7:
         results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
         results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
-        results['gpf_r'] = -results['gpf_r']
+        results['gpf_diff'] = results['gpf_b'] - results['gpf_r']
+        results = results.drop(['gpf_b', 'gpf_r'], axis=1)
     elif len(standings.columns) == 8:
         results['gpf_b'] = results['Blue'].map(standings.set_index('Team')['GPF'])
         results['gpf_r'] = results['Red'].map(standings.set_index('Team')['GPF'])
-        results['gpf_r'] = -results['gpf_r']
+        results['gpf_diff'] = results['gpf_b'] - results['gpf_r']
         results['p_b'] = results['Blue'].map(standings.set_index('Team')['P'])
         results['p_r'] = results['Red'].map(standings.set_index('Team')['P'])
-        results['p_r'] = -results['p_r']
+        results['p_diff'] = results['p_b'] - results['p_r']
+        results = results.drop(['gpf_b', 'gpf_r'], axis=1)
+        results = results.drop(['p_b', 'p_r'], axis=1)
 
     stats = getms(history, results)
     results = pd.concat([results, stats], axis=1)
@@ -170,12 +157,29 @@ def output(results, standings, average, x = ''):
     #standings = pd.concat([standings, average], axis=1)
     path = "Data/"
     if x == '':
-    #    results.to_csv(path + i + '.csv')
-        print(standings)
+        results.to_csv(path + i + '.csv')
+        standings.to_csv(path + i + ' Standings.csv')
         print(average)
         #average.to_csv(path + i + '_jeonjuk.csv')
     #else:
     #    results.to_csv(path + i + x + '.csv')
+
+#set working directory and create folders as necessary
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+if not os.path.exists('Data'):
+    os.mkdir('Data')
+
+#specify the url
+country = 'North_America'
+lck = 'https://lol.gamepedia.com/Portal:Tournaments/' + country
+
+#return html to variable 'page'
+page = urllib.urlopen(lck)
+
+#get tournament table
+soup = BeautifulSoup(page, 'html.parser')
+tournaments = soup.find('table', {"class" : "wikitable sortable"})
+df = pd.read_html(str(tournaments), header=0)
 
 #get unique tournament list & url
 base = 'https://lol.gamepedia.com'
